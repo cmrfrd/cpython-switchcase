@@ -1,0 +1,10 @@
+for t in [ 1.0, 5, "5", {} ]:
+    switch type(t):
+        case float:
+            print("it's a float")
+        case int:
+            print("it's a int")
+        case str:
+            print("it's a str")
+        else:
+            print("it's a something ... ")
