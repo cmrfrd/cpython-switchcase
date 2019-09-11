@@ -59,11 +59,13 @@ switch input(">"):           x = input(">")
         SUITE                    SUITE
 ```
 
-Using `switch` and `case` as the statements of choice were selected from several proposed syntax variants in [PEP 275](https://www.python.org/dev/peps/pep-0275/).
+Instead of including a variable reference and a `==` operator, both are implicitely included in `switch` `case`. While bytecode is slightly different in both implemenations, both produce the same output in slightly different code styles.
+
+Using `switch` and `case` as the statements of choice were selected from several proposed syntax variants in [PEP 275](https://www.python.org/dev/peps/pep-0275/). `switch` and `case` were chosen because it seems the most familiar compared to other languages.
 
 ## How do I try it?!
 
-Follow the build instructions in [README.rst](./README.rst) and run the resulting executable `pythonsc`.
+Follow the build instructions in [README.rst](./README.rst) and run the resulting executable `python`.
 
 or simply
 
