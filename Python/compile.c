@@ -3102,6 +3102,97 @@ compiler_try(struct compiler *c, stmt_ty s) {
         return compiler_try_except(c, s);
 }
 
+static int
+compiler_switch(struct compiler *c, stmt_ty s)
+{
+    int i, n, haselse = 0, casechain = 0;
+    basicblock *end, *orelse;
+    casehandler_ty case_n, case_n_1;
+    stmt_ty else_body = NULL;
+
+    assert(s->kind == Switch_kind);
+
+    end = compiler_new_block(c);
+    orelse = compiler_new_block(c);
+    if (end == NULL || orelse == NULL) {
+        return 0;
+    }
+
+    /* check if switch has else */
+    if ( s->v.Switch.orelse != NULL) {
+      haselse = 1;
+    }
+
+    /* Evaliate switch expression */
+    VISIT(c, expr, s->v.Switch.test);
+
+    /* Get number of cases */
+    n = asdl_seq_LEN(s->v.Switch.cases);
+    if (n > 0) {
+      casechain = 1;
+    }
+
+    basicblock *cases[n];
+
+    /* compile case chains */
+    for ( i = 0 ; i < n ; i++ ) {
+
+      case_n = (casehandler_ty)asdl_seq_GET(s->v.Switch.cases, i);
+      cases[i] = compiler_new_block(c);
+      if (cases[i] == NULL)
+        return 0;
+
+      if ( (i == (n - 1)) && haselse ) {
+        else_body = (stmt_ty)s->v.Switch.orelse;
+        case_n_1 = NULL;
+      }
+      else if ( (i == (n - 1)) && (!haselse) ) {
+        case_n_1 = NULL;
+      }
+      else {
+        case_n_1 = (casehandler_ty)asdl_seq_GET(s->v.Switch.cases, i + 1);
+        cases[i+1] = compiler_new_block(c);
+        if (cases[i+1] == NULL)
+          return 0;
+      }
+
+      /* Set line numbers and stuff */
+      c->u->u_lineno_set = 0;
+      c->u->u_lineno = case_n->lineno;
+      c->u->u_col_offset = case_n->col_offset;
+
+      /* compile casehandler */
+      compiler_use_next_block(c, cases[i]);
+      ADDOP(c, DUP_TOP);
+      VISIT(c, expr, case_n->v.CaseHandler.test);
+      ADDOP_I(c, COMPARE_OP, PyCmp_EQ);
+
+      /* compile last casehandler body ( and else body ) */
+      if ( case_n_1 == NULL ) {
+        ADDOP_JABS(c, POP_JUMP_IF_FALSE, orelse);
+        if ( casechain )
+          ADDOP(c, POP_TOP);
+        VISIT_SEQ(c, stmt, case_n->v.CaseHandler.body);
+        ADDOP_JREL(c, JUMP_FORWARD, end);
+        compiler_use_next_block(c, orelse);
+        if ( casechain )
+          ADDOP(c, POP_TOP);
+        if ( else_body != NULL )
+          VISIT_SEQ(c, stmt, else_body);
+      }
+      else {
+        ADDOP_JABS(c, POP_JUMP_IF_FALSE, cases[i+1]);
+        if ( casechain )
+          ADDOP(c, POP_TOP);
+        VISIT_SEQ(c, stmt, case_n->v.CaseHandler.body);
+      }
+
+      ADDOP_JREL(c, JUMP_FORWARD, end);
+    }
+
+    compiler_use_next_block(c, end);
+    return 1;
+}
 
 static int
 compiler_import_as(struct compiler *c, identifier name, identifier asname)
@@ -3342,6 +3433,8 @@ compiler_visit_stmt(struct compiler *c, stmt_ty s)
         return compiler_while(c, s);
     case If_kind:
         return compiler_if(c, s);
+    case Switch_kind:
+        return compiler_switch(c, s);
     case Raise_kind:
         n = 0;
         if (s->v.Raise.exc) {
@@ -5913,7 +6006,7 @@ makecode(struct compiler *c, struct assembler *a)
         goto error;
     }
     co = PyCode_NewWithPosOnlyArgs(posonlyargcount+posorkeywordargcount,
-                                   posonlyargcount, kwonlyargcount, nlocals_int, 
+                                   posonlyargcount, kwonlyargcount, nlocals_int,
                                    maxdepth, flags, bytecode, consts, names,
                                    varnames, freevars, cellvars, c->c_filename,
                                    c->u->u_name, c->u->u_firstlineno, a->a_lnotab);

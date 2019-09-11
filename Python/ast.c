@@ -4097,6 +4097,67 @@ ast_for_if_stmt(struct compiling *c, const node *n)
 }
 
 static stmt_ty
+ast_for_switch_stmt(struct compiling *c, const node *n)
+{
+    /* This function builds the ast for the 'switch' 'case' statements
+       (づ￣ ³￣)づ
+
+       switch_stmt: 'switch' namedexpr_test ':' ('case' namedexpr_test  (',' namedexpr_test)*  ':' suite)+ ['else' : suite]
+    */
+    int end_lineno, end_col_offset;
+    int i, n_cases = 0;
+    asdl_seq *suite_seq, *cases, *orelse = NULL;
+    expr_ty expression;
+
+    REQ(n, switch_stmt);
+
+    if ( ( TYPE(CHILD(n, NCH(n) - 4)) != NULL ) &&
+           STR(CHILD(n, NCH(n) - 4)) != NULL ) {
+      if ( STR(CHILD(n, NCH(n) - 4))[0] == 'e') {
+        n_cases = ( ( NCH(n) - 3 ) - 3 ) / 4;
+        orelse = ast_for_suite(c, CHILD(n, NCH(n) - 2));
+      }
+    }
+    else {
+      n_cases = ( NCH(n) - 3 ) / 4;
+    }
+
+    if ( n_cases >= 1 ) {
+
+      cases = _Py_asdl_seq_new(n_cases, c->c_arena);
+
+      for (i = 0; i < n_cases; i++) {
+        int off = 6 + (n_cases - i - 1) * 4;
+
+        expression = ast_for_expr(c, CHILD(n, off));
+        if (!expression)
+          return NULL;
+        suite_seq = ast_for_suite(c, CHILD(n, off + 2));
+        if (!suite_seq)
+          return NULL;
+
+        get_last_end_pos(suite_seq, &end_lineno, &end_col_offset);
+        asdl_seq_SET(cases, n_cases - i - 1,
+                     CaseHandler(expression, suite_seq,
+                                 LINENO(CHILD(n, off)),
+                                 CHILD(n, off)->n_col_offset,
+                                 end_lineno, end_col_offset, c->c_arena));
+      }
+
+      expression = ast_for_expr(c, CHILD(n, 1));
+      if (!expression)
+        return NULL;
+
+      return Switch(expression, cases, orelse,
+                    LINENO(n), n->n_col_offset,
+                    end_lineno, end_col_offset, c->c_arena);
+    }
+
+    ast_error(c, n, "must be at lease 1 'case' in 'switch' statement");
+    return NULL;
+}
+
+static stmt_ty
 ast_for_while_stmt(struct compiling *c, const node *n)
 {
     /* while_stmt: 'while' test ':' suite ['else' ':' suite] */
@@ -4555,6 +4616,8 @@ ast_for_stmt(struct compiling *c, const node *n)
         switch (TYPE(ch)) {
             case if_stmt:
                 return ast_for_if_stmt(c, ch);
+            case switch_stmt:
+                return ast_for_switch_stmt(c, ch);
             case while_stmt:
                 return ast_for_while_stmt(c, ch);
             case for_stmt:

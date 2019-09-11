@@ -199,6 +199,7 @@ static int symtable_visit_setcomp(struct symtable *st, expr_ty s);
 static int symtable_visit_dictcomp(struct symtable *st, expr_ty s);
 static int symtable_visit_arguments(struct symtable *st, arguments_ty);
 static int symtable_visit_excepthandler(struct symtable *st, excepthandler_ty);
+static int symtable_visit_casehandler(struct symtable *st, casehandler_ty);
 static int symtable_visit_alias(struct symtable *st, alias_ty);
 static int symtable_visit_comprehension(struct symtable *st, comprehension_ty);
 static int symtable_visit_keyword(struct symtable *st, keyword_ty);
@@ -1310,6 +1311,12 @@ symtable_visit_stmt(struct symtable *st, stmt_ty s)
         VISIT_SEQ(st, excepthandler, s->v.Try.handlers);
         VISIT_SEQ(st, stmt, s->v.Try.finalbody);
         break;
+    case Switch_kind:
+        VISIT(st, expr, s->v.Switch.test);
+        VISIT_SEQ(st, casehandler, s->v.Switch.cases);
+	if (s->v.Switch.orelse)
+	  VISIT_SEQ(st, stmt, s->v.Switch.orelse);
+        break;
     case Assert_kind:
         VISIT(st, expr, s->v.Assert.test);
         if (s->v.Assert.msg)
@@ -1760,6 +1767,14 @@ symtable_visit_excepthandler(struct symtable *st, excepthandler_ty eh)
             return 0;
     VISIT_SEQ(st, stmt, eh->v.ExceptHandler.body);
     return 1;
+}
+
+static int
+symtable_visit_casehandler(struct symtable *st, casehandler_ty ch)
+{
+  VISIT(st, expr, ch->v.CaseHandler.test);
+  VISIT_SEQ(st, stmt, ch->v.CaseHandler.body);
+  return 1;
 }
 
 static int

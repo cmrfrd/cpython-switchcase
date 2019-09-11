@@ -36,6 +36,8 @@ typedef struct _comprehension *comprehension_ty;
 
 typedef struct _excepthandler *excepthandler_ty;
 
+typedef struct _casehandler *casehandler_ty;
+
 typedef struct _arguments *arguments_ty;
 
 typedef struct _arg *arg_ty;
@@ -82,11 +84,11 @@ struct _mod {
 enum _stmt_kind {FunctionDef_kind=1, AsyncFunctionDef_kind=2, ClassDef_kind=3,
                   Return_kind=4, Delete_kind=5, Assign_kind=6,
                   AugAssign_kind=7, AnnAssign_kind=8, For_kind=9,
-                  AsyncFor_kind=10, While_kind=11, If_kind=12, With_kind=13,
-                  AsyncWith_kind=14, Raise_kind=15, Try_kind=16,
-                  Assert_kind=17, Import_kind=18, ImportFrom_kind=19,
-                  Global_kind=20, Nonlocal_kind=21, Expr_kind=22, Pass_kind=23,
-                  Break_kind=24, Continue_kind=25};
+                  AsyncFor_kind=10, While_kind=11, If_kind=12, Switch_kind=13,
+                  With_kind=14, AsyncWith_kind=15, Raise_kind=16, Try_kind=17,
+                  Assert_kind=18, Import_kind=19, ImportFrom_kind=20,
+                  Global_kind=21, Nonlocal_kind=22, Expr_kind=23, Pass_kind=24,
+                  Break_kind=25, Continue_kind=26};
 struct _stmt {
     enum _stmt_kind kind;
     union {
@@ -170,6 +172,12 @@ struct _stmt {
             asdl_seq *body;
             asdl_seq *orelse;
         } If;
+
+        struct {
+            expr_ty test;
+            asdl_seq *cases;
+            asdl_seq *orelse;
+        } Switch;
 
         struct {
             asdl_seq *items;
@@ -425,6 +433,22 @@ struct _excepthandler {
     int end_col_offset;
 };
 
+enum _casehandler_kind {CaseHandler_kind=1};
+struct _casehandler {
+    enum _casehandler_kind kind;
+    union {
+        struct {
+            expr_ty test;
+            asdl_seq *body;
+        } CaseHandler;
+
+    } v;
+    int lineno;
+    int col_offset;
+    int end_lineno;
+    int end_col_offset;
+};
+
 struct _arguments {
     asdl_seq *posonlyargs;
     asdl_seq *args;
@@ -534,6 +558,10 @@ stmt_ty _Py_While(expr_ty test, asdl_seq * body, asdl_seq * orelse, int lineno,
 stmt_ty _Py_If(expr_ty test, asdl_seq * body, asdl_seq * orelse, int lineno,
                int col_offset, int end_lineno, int end_col_offset, PyArena
                *arena);
+#define Switch(a0, a1, a2, a3, a4, a5, a6, a7) _Py_Switch(a0, a1, a2, a3, a4, a5, a6, a7)
+stmt_ty _Py_Switch(expr_ty test, asdl_seq * cases, asdl_seq * orelse, int
+                   lineno, int col_offset, int end_lineno, int end_col_offset,
+                   PyArena *arena);
 #define With(a0, a1, a2, a3, a4, a5, a6, a7) _Py_With(a0, a1, a2, a3, a4, a5, a6, a7)
 stmt_ty _Py_With(asdl_seq * items, asdl_seq * body, string type_comment, int
                  lineno, int col_offset, int end_lineno, int end_col_offset,
@@ -686,6 +714,10 @@ excepthandler_ty _Py_ExceptHandler(expr_ty type, identifier name, asdl_seq *
                                    body, int lineno, int col_offset, int
                                    end_lineno, int end_col_offset, PyArena
                                    *arena);
+#define CaseHandler(a0, a1, a2, a3, a4, a5, a6) _Py_CaseHandler(a0, a1, a2, a3, a4, a5, a6)
+casehandler_ty _Py_CaseHandler(expr_ty test, asdl_seq * body, int lineno, int
+                               col_offset, int end_lineno, int end_col_offset,
+                               PyArena *arena);
 #define arguments(a0, a1, a2, a3, a4, a5, a6, a7) _Py_arguments(a0, a1, a2, a3, a4, a5, a6, a7)
 arguments_ty _Py_arguments(asdl_seq * posonlyargs, asdl_seq * args, arg_ty
                            vararg, asdl_seq * kwonlyargs, asdl_seq *
