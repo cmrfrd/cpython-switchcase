@@ -3,6 +3,8 @@
 This is Python version 3.9.0 alpha 0 with Switch Case!!
 ====================================
 
+By: Alex Comerford (alexanderjcomerford@gmail.com)
+
 To read the original readme for cpython, build instructions, and more go to [README.rst](./README.rst)
 
 ##  What is this fork?
